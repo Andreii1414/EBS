@@ -78,7 +78,7 @@ def generate_subscriptions(num_subscriptions, sub_field_freqs, sub_op_freq):
 
     return [list(sub.values()) for sub in subscriptions]
 
-def wrapper_generate_subscription(num_subscriptions, sub_field_freqs, sub_op_freq, _):
+def wrapper_generate_subscription(num_subscriptions, sub_field_freqs, sub_op_freq):
     return generate_subscriptions(num_subscriptions, sub_field_freqs, sub_op_freq)
 
 def wrapper_generate_publication(_):
@@ -89,11 +89,18 @@ def generate_data_parallel(num_processes, num_publications, num_subscriptions, s
 
     with Pool(num_processes) as p:
         publications = p.map(wrapper_generate_publication, range(num_publications))
-        subscription_func = partial(wrapper_generate_subscription, num_subscriptions, sub_field_freqs, sub_op_freq)
-        subscriptions = p.map(subscription_func, range(1))[0]
+
+        batch_size = num_subscriptions // num_processes
+        counts = [batch_size] * num_processes
+        counts[-1] += num_subscriptions % num_processes
+
+        subscription_func = partial(wrapper_generate_subscription, sub_field_freqs=sub_field_freqs, sub_op_freq=sub_op_freq)
+        batch_subscriptions = p.map(subscription_func, counts)
+        subscriptions = [sub for batch in batch_subscriptions for sub in batch]
 
     duration = time.time() - start_time
     return publications, subscriptions, duration
+
 
 def calculate_statistics(subscriptions):
     total_subs = len(subscriptions)

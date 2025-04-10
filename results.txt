@@ -1,4 +1,4 @@
 {
-  "threads": 1,
-  "execution_time": 1.4954299926757812
+  "threads": 4,
+  "execution_time": 16.495959997177124
 }
