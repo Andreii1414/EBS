@@ -1,6 +1,7 @@
 # README - Evaluarea Implementarii
 
 Realizati o evaluare a sistemului, masurand pentru inregistrarea a 10000 de subscriptii simple, urmatoarele statistici: a) cate publicatii se livreaza cu succes prin reteaua de brokeri intr-un interval continuu de feed de 3 minute, b) latenta medie de livrare a unei publicatii (timpul de la emitere pana la primire) pentru publicatiile trimise in acelasi interval, c) rata de potrivire (matching) pentru cazul in care subscriptiile generate contin pe unul dintre campuri doar operator de egalitate (100%) comparata cu situatia in care frecventa operatorului de egalitate pe campul respectiv este aproximativ un sfert (25%). Redactati un scurt raport de evaluare a solutiei.
+![diagram (1)](https://github.com/user-attachments/assets/bdb02f4f-bac9-4030-b2df-7492fb431a98)
 
 
 !!! Toate testele le-am facut folosind un delay de o secunda la trimiterea publicatiilor si la trimiterea subscriptiilor catre brokeri.
