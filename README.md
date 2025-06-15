@@ -1,38 +1,23 @@
 # README - Evaluarea Implementarii
 
-## 1. Tipul de Paralelizare
-- **Procese** (folosind `multiprocessing.Pool`)
+Realizati o evaluare a sistemului, masurand pentru inregistrarea a 10000 de subscriptii simple, urmatoarele statistici: a) cate publicatii se livreaza cu succes prin reteaua de brokeri intr-un interval continuu de feed de 3 minute, b) latenta medie de livrare a unei publicatii (timpul de la emitere pana la primire) pentru publicatiile trimise in acelasi interval, c) rata de potrivire (matching) pentru cazul in care subscriptiile generate contin pe unul dintre campuri doar operator de egalitate (100%) comparata cu situatia in care frecventa operatorului de egalitate pe campul respectiv este aproximativ un sfert (25%). Redactati un scurt raport de evaluare a solutiei.
 
-## 2. Factorul de Paralelism
-Testele au fost efectuate pentru urmatoarele valori ale numarului de procese:
-- **1 proces** (fara paralelizare)
-- **4 procese**
 
-## 3. Numarul de Mesaje Generat
-Testele s-au realizat pentru urmatoarele valori ale numarului total de mesaje:
-- **100.000** mesaje
-- **1.000.000** mesaje
-- **2.000.000** mesaje
+!!! Toate testele le-am facut folosind un delay de o secunda la trimiterea publicatiilor si la trimiterea subscriptiilor catre brokeri.
 
-Distributia mesajelor:
-- **Publicatii**: 30%
-- **Subscriptii**: 70%
+#### a) 
+        Sub 1: 124 notificari 
+        Sub 2: 153 notificari
+        Sub 3: 162 notificari
+        Total: 439 notificari (delay o secunda)
 
-## 4. Timp de Executie
+#### b)
+Am adaugat un timestamp in specificatia .protobuf (momentul in care a fost 
+trimisa publicatia). Am calculat timestamp_curent – timestamp_trimitere pentru 
+fiecare notificare primita. 
+Latenta medie: aproximativ 1.5ms (local)
 
-| Nr. Mesaje | 1 Proces (sec) | 4 Procese (sec) |
-|------------|----------------|-----------------|
-| 100.000    | 2.06           | 0.795           | 
-| 1.000.000  | 23.71          | 7.74            |
-| 2.000.000  | 50.18          | 16.49           |
+#### c)
+Cu 100% (=) pe campul temp: 117+118+95 notificari primite de cei 3 subscriberi. In 3 minute se trimit 180 de notificari (*3 pentru ca sunt 3 subscriberi). Deci (330/480)*100 = 69% notificari primite
 
-## 5. Specificatiile Procesorului
-
-- **Model**: `AMD Ryzen 5 5500U with Radeon Graphics`
-- **Numar nuclee**: `6`
-- **Logical processors**: `12`
-- **Frecventa**: `2.10` GHz
-- **Cache L1**: `384` KB
-- **Cache L2**: `3.0` MB
-- **Cache L3**: `8.0` MB
-
+Cu 25% (=) pe campul temp: ((154+150+146)/(3*180))*100 = (450/480)*100 = 93%

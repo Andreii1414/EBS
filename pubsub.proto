@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+message Publication {
+    int32 station_id = 1;
+    string city = 2;
+    float temp = 3;
+    float rain = 4;
+    float wind = 5;
+    string direction = 6;
+    string date = 7;
+    int64 timestamp = 8;
+}

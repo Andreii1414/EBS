@@ -60,6 +60,18 @@ def generate_condition(field, num_total, eq_count):
 
     return conditions
 
+def generate_window_subscription():
+    city = random.choice(CITIES)
+    operator = random.choice([">", ">=", "<", "<="])
+    value = random.randint(*TEMP_RANGE)
+
+    return {
+        "type": "window",
+        "city": city,
+        "condition": ("avg_temp", operator, value)
+    }
+
+
 def generate_subscriptions(num_subscriptions, sub_field_freqs, sub_op_freq):
     subscriptions = [{} for _ in range(num_subscriptions)]
     field_counts = {field: max(1, round(freq * num_subscriptions)) for field, freq in sub_field_freqs.items()}
@@ -76,7 +88,7 @@ def generate_subscriptions(num_subscriptions, sub_field_freqs, sub_op_freq):
         for idx, cond in zip(indices, conditions):
             subscriptions[idx][field] = cond
 
-    return [list(sub.values()) for sub in subscriptions]
+    return [list(sub.values()) for sub in subscriptions if sub]
 
 def wrapper_generate_subscription(num_subscriptions, sub_field_freqs, sub_op_freq):
     return generate_subscriptions(num_subscriptions, sub_field_freqs, sub_op_freq)
@@ -84,19 +96,23 @@ def wrapper_generate_subscription(num_subscriptions, sub_field_freqs, sub_op_fre
 def wrapper_generate_publication(_):
     return generate_publication()
 
-def generate_data_parallel(num_processes, num_publications, num_subscriptions, sub_field_freqs, sub_op_freq):
+def generate_data_parallel(num_processes, num_publications, num_subscriptions, sub_field_freqs, sub_op_freq, window_ratio=0):
     start_time = time.time()
 
     with Pool(num_processes) as p:
         publications = p.map(wrapper_generate_publication, range(num_publications))
+        num_window_subs = int(num_subscriptions * window_ratio)
+        num_simple_subs = num_subscriptions - num_window_subs
 
-        batch_size = num_subscriptions // num_processes
+        batch_size = num_simple_subs // num_processes
         counts = [batch_size] * num_processes
         counts[-1] += num_subscriptions % num_processes
 
         subscription_func = partial(wrapper_generate_subscription, sub_field_freqs=sub_field_freqs, sub_op_freq=sub_op_freq)
         batch_subscriptions = p.map(subscription_func, counts)
         subscriptions = [sub for batch in batch_subscriptions for sub in batch]
+        window_subs = [generate_window_subscription() for _ in range(num_window_subs)]
+        subscriptions.extend(window_subs)
 
     duration = time.time() - start_time
     return publications, subscriptions, duration
@@ -108,6 +124,8 @@ def calculate_statistics(subscriptions):
     eq_counts = {field: 0 for field in field_counts}
 
     for sub in subscriptions:
+        if isinstance(sub, dict) and sub.get("type") == "window":
+            continue
         fields_in_sub = {entry[0]: entry[1] for entry in sub}
         for field in field_counts:
             if field in fields_in_sub:
@@ -123,25 +141,77 @@ def calculate_statistics(subscriptions):
 
     return "\n".join(stats)
 
+# if __name__ == "__main__":
+#     NUM_MESSAGES = int(input("Introduceti numarul total de mesaje: "))
+#     PUBLICATION_RATIO = float(input("Procentaj publicatii (ex. 0.5 pentru 50%): "))
+#     NUM_PUBLICATIONS = int(NUM_MESSAGES * PUBLICATION_RATIO)
+#     NUM_SUBSCRIPTIONS = NUM_MESSAGES - NUM_PUBLICATIONS
+#
+#     FIELDS = ["stationid", "city", "temp", "rain", "wind", "direction", "date"]
+#     SUBSCRIPTION_FIELD_FREQUENCIES = {}
+#     SUBSCRIPTION_OPERATOR_FREQUENCY = {}
+#
+#     for field in FIELDS:
+#         freq = float(input(f"Introduceti frecventa pentru {field} (0-1, 0 daca nu este folosit): "))
+#         if freq > 0:
+#             SUBSCRIPTION_FIELD_FREQUENCIES[field] = freq
+#             eq_freq = float(input(f"Introduceti frecventa pentru operatorul '=' la {field} (0-1, 0 daca nu conteaza): "))
+#             if eq_freq > 0:
+#                 SUBSCRIPTION_OPERATOR_FREQUENCY[field] = {"=": eq_freq}
+#
+#     PARALLELISM_LEVEL = int(input("Introduceti numarul de procese: "))
+#
+#     pubs, subs, exec_time = generate_data_parallel(
+#         PARALLELISM_LEVEL, NUM_PUBLICATIONS, NUM_SUBSCRIPTIONS,
+#         SUBSCRIPTION_FIELD_FREQUENCIES, SUBSCRIPTION_OPERATOR_FREQUENCY
+#     )
+#
+#     with open("publications.txt", "w") as f:
+#         for pub in pubs:
+#             f.write(json.dumps(pub) + "\n")
+#
+#     with open("subscriptions.txt", "w") as f:
+#         for sub in subs:
+#             if isinstance(sub, dict) and sub.get("type") == "window":
+#                 f.write(json.dumps(sub) + "\n---\n")
+#             else:
+#                 f.write(json.dumps({"type": "simple", "conditions": sub}) + "\n---\n")
+#
+#         f.write("\n" + calculate_statistics(subs))
+#
+#     with open("results.txt", "w") as f:
+#         f.write(json.dumps({"threads": PARALLELISM_LEVEL, "execution_time": exec_time}, indent=2))
+#
+#     print("Generare finalizata. Rezultatele au fost salvate in fisiere.")
+
 if __name__ == "__main__":
-    NUM_MESSAGES = int(input("Introduceti numarul total de mesaje: "))
-    PUBLICATION_RATIO = float(input("Procentaj publicatii (ex. 0.5 pentru 50%): "))
+    NUM_MESSAGES = 11250
+    PUBLICATION_RATIO = 0.1
     NUM_PUBLICATIONS = int(NUM_MESSAGES * PUBLICATION_RATIO)
     NUM_SUBSCRIPTIONS = NUM_MESSAGES - NUM_PUBLICATIONS
 
-    FIELDS = ["stationid", "city", "temp", "rain", "wind", "direction", "date"]
-    SUBSCRIPTION_FIELD_FREQUENCIES = {}
-    SUBSCRIPTION_OPERATOR_FREQUENCY = {}
+    SUBSCRIPTION_FIELD_FREQUENCIES = {
+        "stationid": 0.4,
+        "city": 0.6,
+        "temp": 0.7,
+        "rain": 0.3,
+        "wind": 0.5,
+        "direction": 0.4,
+        "date": 0.2
+    }
 
-    for field in FIELDS:
-        freq = float(input(f"Introduceti frecventa pentru {field} (0-1, 0 daca nu este folosit): "))
-        if freq > 0:
-            SUBSCRIPTION_FIELD_FREQUENCIES[field] = freq
-            eq_freq = float(input(f"Introduceti frecventa pentru operatorul '=' la {field} (0-1, 0 daca nu conteaza): "))
-            if eq_freq > 0:
-                SUBSCRIPTION_OPERATOR_FREQUENCY[field] = {"=": eq_freq}
+    SUBSCRIPTION_OPERATOR_FREQUENCY = {
+        "stationid": {"=": 0.5},
+        "city": {"=": 1},
+        "temp": {"=": 0.25},
+        "rain": {"=": 0.3},
+        "wind": {"=": 0.6},
+        "direction": {"=": 1},
+        "date": {"=": 0.7}
+    }
 
-    PARALLELISM_LEVEL = int(input("Introduceti numarul de procese: "))
+    PARALLELISM_LEVEL = 1
+
 
     pubs, subs, exec_time = generate_data_parallel(
         PARALLELISM_LEVEL, NUM_PUBLICATIONS, NUM_SUBSCRIPTIONS,
@@ -154,10 +224,15 @@ if __name__ == "__main__":
 
     with open("subscriptions.txt", "w") as f:
         for sub in subs:
-            f.write(json.dumps(sub) + "\n---\n")
-        f.write("\n" + calculate_statistics(subs))
+            if isinstance(sub, dict) and sub.get("type") == "window":
+                f.write(json.dumps(sub) + "\n")
+            else:
+                f.write(json.dumps({"type": "simple", "conditions": sub}) + "\n")
+
+       # f.write("\n" + calculate_statistics(subs))
 
     with open("results.txt", "w") as f:
         f.write(json.dumps({"threads": PARALLELISM_LEVEL, "execution_time": exec_time}, indent=2))
 
     print("Generare finalizata. Rezultatele au fost salvate in fisiere.")
+
