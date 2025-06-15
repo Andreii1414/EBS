@@ -18,6 +18,6 @@ fiecare notificare primita.
 Latenta medie: aproximativ 1.5ms (local)
 
 #### c)
-Cu 100% (=) pe campul temp: 117+118+95 notificari primite de cei 3 subscriberi. In 3 minute se trimit 180 de notificari (*3 pentru ca sunt 3 subscriberi). Deci (330/480)*100 = 69% notificari primite
+Cu 100% (=) pe campul temp: 117+118+95 notificari primite de cei 3 subscriberi. In 3 minute se trimit 180 de notificari (*3 pentru ca sunt 3 subscriberi). Deci (330/540)*100 = 61% notificari primite
 
-Cu 25% (=) pe campul temp: ((154+150+146)/(3*180))*100 = (450/480)*100 = 93%
+Cu 25% (=) pe campul temp: ((154+150+146)/(3*180))*100 = (450/540)*100 = 83%
